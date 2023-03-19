@@ -1,3 +1,6 @@
+# Modified from: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py on 2023-03-17
+from torchvision.models._utils import _ModelURLs
+
 from functools import partial
 from typing import Any, Callable, List, Optional, Type, Union
 
@@ -5,11 +8,11 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from ..transforms._presets import ImageClassification
-from ..utils import _log_api_usage_once
-from ._api import register_model, Weights, WeightsEnum
-from ._meta import _IMAGENET_CATEGORIES
-from ._utils import _ovewrite_named_param, handle_legacy_interface
+from torchvision.transforms._presets import ImageClassification
+from torchvision.utils import _log_api_usage_once
+from torchvision.models._api import register_model, Weights, WeightsEnum
+from torchvision.models._meta import _IMAGENET_CATEGORIES
+from torchvision.models._utils import _ovewrite_named_param, handle_legacy_interface
 
 
 __all__ = [
@@ -86,7 +89,7 @@ class BasicBlock(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, beta: Tensor = None, gamma: Tensor = None) -> Tensor:
         identity = x
 
         out = self.conv1(x)
@@ -98,6 +101,13 @@ class BasicBlock(nn.Module):
 
         if self.downsample is not None:
             identity = self.downsample(x)
+
+        # ADD FILM START
+        if gamma is not None:
+            out = out * gamma
+        if beta is not None:
+            out = out + beta
+        # ADD FILM END
 
         out += identity
         out = self.relu(out)
@@ -140,7 +150,7 @@ class Bottleneck(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, beta: Tensor = None, gamma: Tensor = None) -> Tensor:
         identity = x
 
         out = self.conv1(x)
@@ -156,6 +166,13 @@ class Bottleneck(nn.Module):
 
         if self.downsample is not None:
             identity = self.downsample(x)
+
+        # ADD FILM START
+        if gamma is not None:
+            out = out * gamma
+        if beta is not None:
+            out = out + beta
+        # ADD FILM END
 
         out += identity
         out = self.relu(out)
@@ -222,6 +239,38 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
+        # COMPUTE OUTPUT SIZES FILM START
+        example_x = torch.zeros(1, 3, 224, 224)
+
+        # Copy first part of forward pass
+        example_x = self.conv1(example_x)
+        example_x = self.bn1(example_x)
+        example_x = self.relu(example_x)
+        example_x = self.maxpool(example_x)
+
+        # Each layer has a number of blocks (resnet50 has 4 layers with [3, 4, 6, 3] blocks at each layer)
+        # Each block outputs a number of planes (related to the [64, 128, 256, 512] above, but depends on if BasicBlock or Bottleneck)
+        self.num_planes_per_block_per_layer = []
+        self.layers = [self.layer1, self.layer2, self.layer3, self.layer4]
+        for i, layer in enumerate(self.layers):
+            # Perform forward pass and store output sizes
+            num_planes_per_block = []
+            for block in layer:
+                example_x = block(example_x)
+                num_planes = example_x.shape[1]
+                num_planes_per_block.append(num_planes)
+
+            # For now, assume all elements of num_planes_per_block are the same
+            num_planes = num_planes_per_block[0]
+            num_blocks = len(num_planes_per_block)
+            assert (num_blocks * num_planes == sum(num_planes_per_block))
+            self.num_planes_per_block_per_layer.append(num_planes_per_block)
+
+        # This is an important attribute to define how many FiLM params are needed
+        self.num_film_params = sum([sum(num_planes_per_block)
+                                   for num_planes_per_block in self.num_planes_per_block_per_layer])
+        # COMPUTE OUTPUT SIZES FILM END
+
     def _make_layer(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -263,17 +312,40 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x: Tensor) -> Tensor:
+    def _forward_impl(self, x: Tensor, beta: Tensor = None, gamma: Tensor = None) -> Tensor:
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        # FILM IMPL START
+        if beta is None and gamma is None:
+            # Regular forward pass
+            for layer in self.layers:
+                x = layer(x)
+        else:
+            # beta.shape = gamma.shape = (batch_size, num_film_params)
+            start_idx = 0
+            for i, layer in enumerate(self.layers):
+                # Compute indices of FiLM params used for this layer
+                num_planes_per_block = self.num_planes_per_block_per_layer[i]
+                num_blocks = len(num_planes_per_block)
+                num_planes = num_planes_per_block[0]
+                assert (sum(num_planes_per_block) == num_blocks * num_planes)
+                end_idx = start_idx + num_blocks * num_planes
+
+                # beta_i.shape = gamma_i.shape = (batch_size, num_blocks, num_planes)
+                beta_i = beta[:, start_idx:end_idx].reshape(-1, num_blocks, num_planes) if beta is not None else None
+                gamma_i = gamma[:, start_idx:end_idx].reshape(-1, num_blocks, num_planes) if gamma is not None else None
+
+                for j, block in enumerate(layer):
+                    # beta_ij.shape = gamma_ij.shape = (batch_size, num_planes, 1, 1)
+                    beta_ij = beta_i[:, j, :].reshape(-1, num_planes, 1, 1) if beta_i is not None else None
+                    gamma_ij = gamma_i[:, j, :].reshape(-1, num_planes, 1, 1) if gamma_i is not None else None
+                    x = block(x, beta=beta_ij, gamma=gamma_ij)
+                start_idx = end_idx
+        # FILM IMPL END
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
@@ -281,8 +353,8 @@ class ResNet(nn.Module):
 
         return x
 
-    def forward(self, x: Tensor) -> Tensor:
-        return self._forward_impl(x)
+    def forward(self, x: Tensor, beta: Tensor = None, gamma: Tensor = None) -> Tensor:
+        return self._forward_impl(x, beta=beta, gamma=gamma)
 
 
 def _resnet(
@@ -983,3 +1055,37 @@ def wide_resnet101_2(
 
     _ovewrite_named_param(kwargs, "width_per_group", 64 * 2)
     return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
+
+
+if __name__ == "__main__":
+    from torchinfo import summary
+    import torchvision.models.resnet
+
+    # Create encoder
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    img_encoder_weights = ResNet50_Weights.DEFAULT
+    img_encoder = resnet50(img_encoder_weights).to(device)
+
+    # Create reference encoder
+    reference_encoder = torchvision.models.resnet.resnet50(img_encoder_weights).to(device)
+
+    # Summary comparison
+    print(f"Summary of FiLM resnet:")
+    summary(img_encoder, input_size=(1, 3, 224, 224), depth=float('inf'), device=device)
+    print()
+
+    print(f"Summary of reference resnet:")
+    summary(img_encoder, input_size=(1, 3, 224, 224), depth=float('inf'), device=device)
+    print()
+
+    # Compare output with reference encoder
+    example_input = torch.rand(1, 3, 224, 224, device=device)
+    example_output = img_encoder(example_input)
+    reference_output = reference_encoder(example_input)
+    print(f"Output difference with reference: {torch.norm(example_output - reference_output)}")
+
+    # Compare output with defined beta and gamma
+    example_output_with_film = img_encoder(example_input,
+                                           beta=torch.zeros(1, img_encoder.num_film_params, device=device),
+                                           gamma=torch.ones(1, img_encoder.num_film_params, device=device))
+    print(f"Output difference with defined beta and gamma: {torch.norm(example_output - example_output_with_film)}")
