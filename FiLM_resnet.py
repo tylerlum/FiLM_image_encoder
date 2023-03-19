@@ -751,7 +751,7 @@ class Wide_ResNet101_2_Weights(WeightsEnum):
     DEFAULT = IMAGENET1K_V2
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
 def resnet18(*, weights: Optional[ResNet18_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-18 from `Deep Residual Learning for Image Recognition <https://arxiv.org/pdf/1512.03385.pdf>`__.
@@ -777,7 +777,7 @@ def resnet18(*, weights: Optional[ResNet18_Weights] = None, progress: bool = Tru
     return _resnet(BasicBlock, [2, 2, 2, 2], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet34_Weights.IMAGENET1K_V1))
 def resnet34(*, weights: Optional[ResNet34_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-34 from `Deep Residual Learning for Image Recognition <https://arxiv.org/pdf/1512.03385.pdf>`__.
@@ -803,7 +803,7 @@ def resnet34(*, weights: Optional[ResNet34_Weights] = None, progress: bool = Tru
     return _resnet(BasicBlock, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet50_Weights.IMAGENET1K_V1))
 def resnet50(*, weights: Optional[ResNet50_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-50 from `Deep Residual Learning for Image Recognition <https://arxiv.org/pdf/1512.03385.pdf>`__.
@@ -835,7 +835,7 @@ def resnet50(*, weights: Optional[ResNet50_Weights] = None, progress: bool = Tru
     return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet101_Weights.IMAGENET1K_V1))
 def resnet101(*, weights: Optional[ResNet101_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-101 from `Deep Residual Learning for Image Recognition <https://arxiv.org/pdf/1512.03385.pdf>`__.
@@ -867,7 +867,7 @@ def resnet101(*, weights: Optional[ResNet101_Weights] = None, progress: bool = T
     return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNet152_Weights.IMAGENET1K_V1))
 def resnet152(*, weights: Optional[ResNet152_Weights] = None, progress: bool = True, **kwargs: Any) -> ResNet:
     """ResNet-152 from `Deep Residual Learning for Image Recognition <https://arxiv.org/pdf/1512.03385.pdf>`__.
@@ -899,7 +899,7 @@ def resnet152(*, weights: Optional[ResNet152_Weights] = None, progress: bool = T
     return _resnet(Bottleneck, [3, 8, 36, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNeXt50_32X4D_Weights.IMAGENET1K_V1))
 def resnext50_32x4d(
     *, weights: Optional[ResNeXt50_32X4D_Weights] = None, progress: bool = True, **kwargs: Any
@@ -929,7 +929,7 @@ def resnext50_32x4d(
     return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNeXt101_32X8D_Weights.IMAGENET1K_V1))
 def resnext101_32x8d(
     *, weights: Optional[ResNeXt101_32X8D_Weights] = None, progress: bool = True, **kwargs: Any
@@ -959,7 +959,7 @@ def resnext101_32x8d(
     return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", ResNeXt101_64X4D_Weights.IMAGENET1K_V1))
 def resnext101_64x4d(
     *, weights: Optional[ResNeXt101_64X4D_Weights] = None, progress: bool = True, **kwargs: Any
@@ -989,7 +989,7 @@ def resnext101_64x4d(
     return _resnet(Bottleneck, [3, 4, 23, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", Wide_ResNet50_2_Weights.IMAGENET1K_V1))
 def wide_resnet50_2(
     *, weights: Optional[Wide_ResNet50_2_Weights] = None, progress: bool = True, **kwargs: Any
@@ -1023,7 +1023,7 @@ def wide_resnet50_2(
     return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
-@register_model()
+# @register_model()
 @handle_legacy_interface(weights=("pretrained", Wide_ResNet101_2_Weights.IMAGENET1K_V1))
 def wide_resnet101_2(
     *, weights: Optional[Wide_ResNet101_2_Weights] = None, progress: bool = True, **kwargs: Any
@@ -1063,18 +1063,21 @@ if __name__ == "__main__":
 
     # Create encoder
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    img_encoder_weights = ResNet50_Weights.DEFAULT
-    img_encoder = resnet50(img_encoder_weights).to(device)
+    img_encoder = resnet50(weights=ResNet50_Weights.DEFAULT).to(device)
 
     # Create reference encoder
-    reference_encoder = torchvision.models.resnet.resnet50(img_encoder_weights).to(device)
+    reference_encoder = torchvision.models.resnet.resnet50(weights=torchvision.models.resnet.ResNet50_Weights.DEFAULT).to(device)
 
     # Summary comparison
+    print("~" * 100)
     print(f"Summary of FiLM resnet:")
+    print("~" * 100)
     summary(img_encoder, input_size=(1, 3, 224, 224), depth=float('inf'), device=device)
     print()
 
+    print("~" * 100)
     print(f"Summary of reference resnet:")
+    print("~" * 100)
     summary(img_encoder, input_size=(1, 3, 224, 224), depth=float('inf'), device=device)
     print()
 
@@ -1082,10 +1085,13 @@ if __name__ == "__main__":
     example_input = torch.rand(1, 3, 224, 224, device=device)
     example_output = img_encoder(example_input)
     reference_output = reference_encoder(example_input)
+    print("~" * 100)
+    print(f"Comparing outputs given same inputs: ")
+    print("~" * 100)
     print(f"Output difference with reference: {torch.norm(example_output - reference_output)}")
 
     # Compare output with defined beta and gamma
     example_output_with_film = img_encoder(example_input,
                                            beta=torch.zeros(1, img_encoder.num_film_params, device=device),
                                            gamma=torch.ones(1, img_encoder.num_film_params, device=device))
-    print(f"Output difference with defined beta and gamma: {torch.norm(example_output - example_output_with_film)}")
+    print(f"Output difference with defined beta=0 and gamma=1: {torch.norm(example_output - example_output_with_film)}")
