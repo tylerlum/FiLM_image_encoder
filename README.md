@@ -2,6 +2,14 @@
 
 FiLM (Feature-wise Linear Modulation) image encoder implementation in PyTorch.
 
+# Installation
+
+Install `torch` and `torchvision`: https://pytorch.org/get-started/locally/
+
+Install `torchinfo`: https://github.com/TylerYep/torchinfo
+
+# Run
+
 Run example using a FiLM-ed ResNet with:
 
 ```
