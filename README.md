@@ -13,6 +13,12 @@ Install `torchinfo`: https://github.com/TylerYep/torchinfo
 Run example using a FiLM-ed ResNet with:
 
 ```
+python FiLM_generator.py
+```
+
+and run example showing how the FiLM-ed ResNet works with:
+
+```
 python FiLM_resnet.py
 ```
 
