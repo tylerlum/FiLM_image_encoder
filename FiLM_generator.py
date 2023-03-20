@@ -48,7 +48,6 @@ if __name__ == "__main__":
 
     BATCH_SIZE = 1
     FILM_INPUT_DIM = 100
-    NUM_BETA_GAMMA = 2  # 1 for beta, 1 for gamma
     IMG_SHAPE = (3, 224, 224)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
