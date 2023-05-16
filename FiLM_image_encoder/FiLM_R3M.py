@@ -17,12 +17,26 @@ import torchvision.transforms as T
 import FiLM_resnet
 
 epsilon = 1e-8
-def do_nothing(x): return x
+
+
+def do_nothing(x):
+    return x
 
 
 class R3M(nn.Module):
-    def __init__(self, device, lr, hidden_dim, size=34, l2weight=1.0, l1weight=1.0,
-                 langweight=1.0, tcnweight=0.0, l2dist=True, bs=16):
+    def __init__(
+        self,
+        device,
+        lr,
+        hidden_dim,
+        size=34,
+        l2weight=1.0,
+        l1weight=1.0,
+        langweight=1.0,
+        tcnweight=0.0,
+        l2dist=True,
+        bs=16,
+    ):
         super().__init__()
 
         self.device = device
@@ -54,14 +68,20 @@ class R3M(nn.Module):
             self.convnet = FiLM_resnet.resnet50(pretrained=False)
         elif size == 0:
             from transformers import AutoConfig
+
             self.outdim = 768
-            self.convnet = AutoModel.from_config(config=AutoConfig.from_pretrained(
-                'google/vit-base-patch32-224-in21k')).to(self.device)
+            self.convnet = AutoModel.from_config(
+                config=AutoConfig.from_pretrained("google/vit-base-patch32-224-in21k")
+            ).to(self.device)
 
         if self.size == 0:
-            self.normlayer = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            self.normlayer = transforms.Normalize(
+                mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]
+            )
         else:
-            self.normlayer = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            self.normlayer = transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+            )
         self.convnet.fc = Identity()
         self.convnet.train()
         params += list(self.convnet.parameters())
@@ -70,8 +90,11 @@ class R3M(nn.Module):
         if self.langweight > 0.0:
             # Pretrained DistilBERT Sentence Encoder
             from r3m.models.models_language import LangEncoder, LanguageReward
+
             self.lang_enc = LangEncoder(self.device, 0, 0)
-            self.lang_rew = LanguageReward(None, self.outdim, hidden_dim, self.lang_enc.lang_size, simfunc=self.sim)
+            self.lang_rew = LanguageReward(
+                None, self.outdim, hidden_dim, self.lang_enc.lang_size, simfunc=self.sim
+            )
             params += list(self.lang_rew.parameters())
         ########################################################################
 
@@ -104,7 +127,7 @@ class R3M(nn.Module):
 
     def sim(self, tensor1, tensor2):
         if self.l2dist:
-            d = - torch.linalg.norm(tensor1 - tensor2, dim=-1)
+            d = -torch.linalg.norm(tensor1 - tensor2, dim=-1)
         else:
             d = self.cs(tensor1, tensor2)
         return d
@@ -114,10 +137,22 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def cleanup_config(cfg):
-    VALID_ARGS = ["_target_", "device", "lr", "hidden_dim", "size",
-                  "l2weight", "l1weight", "langweight", "tcnweight", "l2dist", "bs"]
+    VALID_ARGS = [
+        "_target_",
+        "device",
+        "lr",
+        "hidden_dim",
+        "size",
+        "l2weight",
+        "l1weight",
+        "langweight",
+        "tcnweight",
+        "l2dist",
+        "bs",
+    ]
 
     import copy
+
     config = copy.deepcopy(cfg)
     keys = config.agent.keys()
     for key in list(keys):
@@ -154,18 +189,18 @@ def load_r3m(modelid):
     home = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".r3m")
     if modelid == "resnet50":
         foldername = "r3m_50"
-        modelurl = 'https://drive.google.com/uc?id=1Xu0ssuG0N1zjZS54wmWzJ7-nb0-7XzbA'
-        configurl = 'https://drive.google.com/uc?id=10jY2VxrrhfOdNPmsFdES568hjjIoBJx8'
+        modelurl = "https://drive.google.com/uc?id=1Xu0ssuG0N1zjZS54wmWzJ7-nb0-7XzbA"
+        configurl = "https://drive.google.com/uc?id=10jY2VxrrhfOdNPmsFdES568hjjIoBJx8"
     elif modelid == "resnet34":
         foldername = "r3m_34"
-        modelurl = 'https://drive.google.com/uc?id=15bXD3QRhspIRacOKyWPw5y2HpoWUCEnE'
-        configurl = 'https://drive.google.com/uc?id=1RY0NS-Tl4G7M1Ik_lOym0b5VIBxX9dqW'
+        modelurl = "https://drive.google.com/uc?id=15bXD3QRhspIRacOKyWPw5y2HpoWUCEnE"
+        configurl = "https://drive.google.com/uc?id=1RY0NS-Tl4G7M1Ik_lOym0b5VIBxX9dqW"
     elif modelid == "resnet18":
         foldername = "r3m_18"
-        modelurl = 'https://drive.google.com/uc?id=1A1ic-p4KtYlKXdXHcV2QV0cUzI4kn0u-'
-        configurl = 'https://drive.google.com/uc?id=1nitbHQ-GRorxc7vMUiEHjHWP5N11Jvc6'
+        modelurl = "https://drive.google.com/uc?id=1A1ic-p4KtYlKXdXHcV2QV0cUzI4kn0u-"
+        configurl = "https://drive.google.com/uc?id=1nitbHQ-GRorxc7vMUiEHjHWP5N11Jvc6"
     else:
-        raise NameError('Invalid Model ID')
+        raise NameError("Invalid Model ID")
 
     if not os.path.exists(os.path.join(home, foldername)):
         os.makedirs(os.path.join(home, foldername))
@@ -179,7 +214,9 @@ def load_r3m(modelid):
     cleancfg = cleanup_config(modelcfg)
     rep = hydra.utils.instantiate(cleancfg)
     rep = torch.nn.DataParallel(rep)
-    r3m_state_dict = remove_language_head(torch.load(modelpath, map_location=torch.device(device))['r3m'])
+    r3m_state_dict = remove_language_head(
+        torch.load(modelpath, map_location=torch.device(device))["r3m"]
+    )
     rep.load_state_dict(r3m_state_dict)
     return rep
 
@@ -190,24 +227,33 @@ if __name__ == "__main__":
 
     # Create model
     model = load_r3m("resnet50").to(device)
-    summary(model, input_size=(1, 3, 224, 224), depth=float('inf'), device=device)
+    summary(model, input_size=(1, 3, 224, 224), depth=float("inf"), device=device)
 
     # Create reference model
     reference_model = r3m.load_r3m("resnet50").to(device)
 
     # Compare outputs
     example_input = torch.rand(1, 3, 224, 224, device=device)
-    example_output = model(example_input * 255.)
-    reference_output = reference_model(example_input * 255.)
-    print(f"Output difference with reference: {torch.norm(example_output - reference_output)}")
+    example_output = model(example_input * 255.0)
+    reference_output = reference_model(example_input * 255.0)
+    print(
+        f"Output difference with reference: {torch.norm(example_output - reference_output)}"
+    )
 
     # Compare outputs with convnet
     convnet = model.module.convnet
     normlayer = model.module.normlayer
     num_params = sum([sum(x) for x in convnet.num_planes_per_block_per_layer])
     example_output_2 = convnet(normlayer(example_input))
-    example_output_3 = convnet(normlayer(example_input), beta=torch.zeros(1, num_params, device=device),
-                               gamma=torch.ones(1, num_params, device=device))
+    example_output_3 = convnet(
+        normlayer(example_input),
+        beta=torch.zeros(1, num_params, device=device),
+        gamma=torch.ones(1, num_params, device=device),
+    )
 
-    print(f"Output difference with convnet: {torch.norm(example_output - example_output_2)}")
-    print(f"Output difference with convnet beta gamma: {torch.norm(example_output - example_output_3)}")
+    print(
+        f"Output difference with convnet: {torch.norm(example_output - example_output_2)}"
+    )
+    print(
+        f"Output difference with convnet beta gamma: {torch.norm(example_output - example_output_3)}"
+    )
