@@ -1,5 +1,5 @@
-from FiLM_image_encoder.FiLM_resnet import resnet18, ResNet18_Weights
-from FiLM_image_encoder.FiLM_generator import FiLMGenerator
+from FiLM_image_encoder.FiLMed_models.FiLM_resnet import resnet18, ResNet18_Weights
+from FiLM_image_encoder.FiLM_generator.FiLM_generator import FiLMGenerator
 from torchinfo import summary
 import torch
 
