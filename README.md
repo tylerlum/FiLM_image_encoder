@@ -8,18 +8,24 @@ Install `torch` and `torchvision`: https://pytorch.org/get-started/locally/
 
 Install `torchinfo`: https://github.com/TylerYep/torchinfo
 
+Install this package:
+
+```
+pip install -e .
+```
+
 # Run
 
-Run example using a FiLM-ed ResNet with:
+Run example with:
 
 ```
-python FiLM_generator.py
+python demo.py
 ```
 
-and run example showing how the FiLM-ed ResNet works with:
+and run example with specific models by running:
 
 ```
-python FiLM_resnet.py
+python FiLM_image_encoder/FiLMed_models/FiLM_resnet.py
 ```
 
 # References
