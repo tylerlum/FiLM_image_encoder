@@ -1,9 +1,9 @@
-import setuptools
+from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding="utf-8") as file_handle:
     long_description = file_handle.read()
 
-setuptools.setup(
+setup(
     name='FiLM_image_encoder',
     version='0.0.1',
     author='Tyler Lum',
@@ -16,6 +16,6 @@ setuptools.setup(
         'Bug Tracker': 'https://github.com/tylerlum/FiLM_image_encoder/issues',
     },
     license='MIT',
-    packages=['FiLM_image_encoder'],
+    packages=find_packages(),
     install_requires=['torch'],
 )
