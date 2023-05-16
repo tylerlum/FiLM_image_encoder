@@ -8,6 +8,12 @@ Install `torch` and `torchvision`: https://pytorch.org/get-started/locally/
 
 Install `torchinfo`: https://github.com/TylerYep/torchinfo
 
+Install this package:
+
+```
+pip install -e .
+```
+
 # Run
 
 Run example with:
